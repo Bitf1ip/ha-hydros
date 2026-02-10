@@ -1,0 +1,24 @@
+{
+  "config": {
+    "flow_title": "Hydros",
+    "step": {
+      "user": {
+        "title": "Connect to Hydros",
+        "description": "Enter the credentials used for the Hydros web portal."
+      },
+      "collectives": {
+        "title": "Select collectives",
+        "description": "Choose one or more collectives to expose in Home Assistant."
+      }
+    },
+    "error": {
+      "invalid_auth": "The provided credentials are invalid.",
+      "cannot_connect": "Unable to reach the Hydros service.",
+      "unknown": "Unexpected error occurred.",
+      "select_collective": "Select at least one collective."
+    },
+    "abort": {
+      "no_collectives": "No collectives available for this account."
+    }
+  }
+}
