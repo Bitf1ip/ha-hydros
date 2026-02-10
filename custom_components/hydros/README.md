@@ -6,7 +6,9 @@ Custom Home Assistant integration for Hydros controllers. It connects to the Hyd
 ## Capabilities
 Current focus is on exposing Hydros sensors to home assistant, although controlling Hydros is technically possible, it is not currently supported. 
 
-⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood). Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
+⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood). 
+
+🛡️DO leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
 
 Example of good usage for this integration includes: long term metrics, triggering alerts, automation to non life supporting 3rd party devices (e.g light, smart switch).
 
