@@ -6,10 +6,10 @@ Custom Home Assistant integration for Hydros controllers. It connects to the Hyd
 ## Capabilities
 This integration is strictly designed for monitoring.
 
-🛡️Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
-
 ⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood).
 ⚠️ This integration require internet to function and integrate with Hydros' cloud. Network issues will cause sensors to become unavailable (and automation to fail).
+
+🛡️Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
 
 Example of good usage for this integration includes: long term metrics, triggering alerts, automation to non life supporting 3rd party devices (e.g light, smart switch).
 
@@ -24,8 +24,6 @@ Example of good usage for this integration includes: long term metrics, triggeri
 - **Binary sensors**:
   - Binary outputs (e.g., relays/outlets).
   - Rope leak inputs as binary sensors.
-- **Buttons**:
-  - Debug Sample button (collects one S3 config snapshot + one MQTT payload snapshot).
 - **MQTT**:
   - Subscribes to AWS IoT MQTT for real-time updates.
   - Auto retry + reconnect logic on disconnect.
