@@ -18,7 +18,6 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dis
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 
 from .const import DOMAIN
 from .hydros_hub import HydrosHub
@@ -43,7 +42,6 @@ class HydrosBinarySensorEntityDescription(BinarySensorEntityDescription):
     section: str = "Output"
     input_key: str | None = None
     sense_mode: str | None = None
-    availability_check: Callable[[HydrosHub, str], bool] | None = None
 
 
 async def async_setup_entry(
@@ -330,7 +328,6 @@ class HydrosBinarySensor(BinarySensorEntity):
         self._section = description.section
         self._sense_mode = description.sense_mode
         self._remove_dispatcher: Callable[[], None] | None = None
-        self._last_state: bool | None = None
 
     @property
     def device_info(self) -> DeviceInfo:

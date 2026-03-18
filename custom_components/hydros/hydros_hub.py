@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
+import requests
 from collections.abc import Callable
 from datetime import datetime, timezone, timedelta
 from typing import Any
@@ -26,7 +28,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 try:
-    from custom_components.hydros.pyhydros import HydrosAPI, HydrosAPIError, HydrosAuthError, HydrosMQTTError
+    from pyhydros import HydrosAPI, HydrosAPIError, HydrosAuthError, HydrosMQTTError
 except ImportError as err:  # pragma: no cover
     HydrosAPI = None  # type: ignore[assignment]
     HydrosAPIError = Exception  # type: ignore[assignment]
@@ -60,6 +62,7 @@ class HydrosHub:
         self._debug_samples: dict[str, dict[str, Any]] = {}
         self._mqtt_primary: str | None = None
         self._mqtt_lock = asyncio.Lock()
+        self._mqtt_client_id: str = f"ha-hydros-{uuid.uuid4().hex}"
         self._username: str = entry.data[CONF_USERNAME]
         self._password: str = entry.data[CONF_PASSWORD]
         self._region: str = entry.data.get(CONF_REGION, DEFAULT_REGION)
@@ -206,17 +209,46 @@ class HydrosHub:
             end_local = start_local + timedelta(days=1)
             start_time = dt_util.as_utc(start_local)
             end_time = dt_util.as_utc(end_local)
+
+            def _fetch_logs() -> list[Any]:
+                return api.get_dosing_logs(
+                    thing_id,
+                    output_name,
+                    count=count,
+                    skip=0,
+                    start=start_time,
+                    end=end_time,
+                )
+
             try:
-                entries = await self._hass.async_add_executor_job(
-                    lambda: api.get_dosing_logs(
+                entries = await self._hass.async_add_executor_job(_fetch_logs)
+            except requests.exceptions.HTTPError as err:
+                status = getattr(err.response, "status_code", None)
+                if status in (401, 403):
+                    _LOGGER.warning(
+                        "Hydros dosing logs unauthorized for %s/%s; re-authenticating",
                         thing_id,
                         output_name,
-                        count=count,
-                        skip=0,
-                        start=start_time,
-                        end=end_time,
                     )
-                )
+                    try:
+                        await self._hass.async_add_executor_job(api.authenticate)
+                        entries = await self._hass.async_add_executor_job(_fetch_logs)
+                    except Exception as retry_err:
+                        _LOGGER.warning(
+                            "Failed to refresh dosing logs for %s/%s after re-auth: %s",
+                            thing_id,
+                            output_name,
+                            retry_err,
+                        )
+                        return
+                else:
+                    _LOGGER.warning(
+                        "Failed to refresh dosing logs for %s/%s: %s",
+                        thing_id,
+                        output_name,
+                        err,
+                    )
+                    return
             except HydrosAPIError as err:
                 _LOGGER.warning(
                     "Failed to refresh dosing logs for %s/%s: %s",
@@ -457,7 +489,7 @@ class HydrosHub:
             return
 
         anchor = self._mqtt_primary or thing_id
-        api.connect_mqtt(thing_id=anchor, client_id="ha-hydros")
+        api.connect_mqtt(thing_id=anchor, client_id=self._mqtt_client_id)
         self._mqtt_primary = anchor
 
     def _schedule_status_update(self, thing_id: str, payload: Any) -> None:

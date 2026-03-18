@@ -1,0 +1,4 @@
+homeassistant
+pyhydros
+pytest
+pytest-homeassistant-custom-component

@@ -23,6 +23,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfTemperature,
     UnitOfVolume,
+    UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
@@ -33,7 +34,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .hydros_hub import HydrosHub
-from .types import is_binary_output, is_doser_output
+from .types import is_binary_output, is_doser_output, coerce_int as _coerce_int
 from .entity_builders import (
     build_collective_alerts_description,
     build_collective_debug_description,
@@ -111,7 +112,6 @@ _PROBE_MODE_META = {
 
 SENSE_MODE_MAP = {
     "temp": {
-        "unit": UnitOfTemperature.CELSIUS,
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
     },
@@ -138,6 +138,10 @@ SENSE_MODE_MAP = {
     "tds": {
         "unit": "ppm",
         "device_class": None,
+        "state_class": SensorStateClass.MEASUREMENT,
+    },
+    "flowrate": {
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
     },
 }
@@ -230,10 +234,6 @@ COLLECTIVE_HEARTBEAT_OFFLINE_SECONDS = 30
 COLLECTIVE_HEARTBEAT_STALE_SECONDS = 300
 
 
-def _celsius_to_fahrenheit(value: float) -> float:
-    return (value * 9.0 / 5.0) + 32.0
-
-
 def _normalize_output_value(key: str | None, value: Any) -> Any:
     transform = OUTPUT_VALUE_TRANSFORMS.get(key or "")
     if not transform:
@@ -248,17 +248,6 @@ def _normalize_output_value(key: str | None, value: Any) -> Any:
 
     normalized = numeric * scale
     return round(normalized, 3)
-
-
-def _coerce_int(value: Any) -> int | None:
-    if isinstance(value, str):
-        value = value.strip()
-        if not value:
-            return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
 
 
 
@@ -473,13 +462,6 @@ class HydrosSensorManager:
                 _LOGGER.warning("Hydros failed to load config for %s: %s", thing_id, err)
                 continue
 
-            option_block = config.get("Option")
-            temp_fmt = None
-            if isinstance(option_block, dict):
-                option = option_block.get("Option")
-                if isinstance(option, dict):
-                    temp_fmt = option.get("tempFmt")
-
             metadata = self._hub.get_collective_metadata(thing_id) or {}
             device_name = metadata.get("friendlyName") or metadata.get("thingName") or thing_id
             manufacturer = metadata.get("manufacturer") or "Hydros"
@@ -497,11 +479,9 @@ class HydrosSensorManager:
                         thing_id=thing_id,
                         input_key=input_key,
                         sensor_meta=sensor_meta,
-                        temp_fmt=temp_fmt,
                         device_name=device_name,
                         sense_mode_map=SENSE_MODE_MAP,
                         probe_mode_meta=_PROBE_MODE_META,
-                        celsius_to_fahrenheit=_celsius_to_fahrenheit,
                         round_probe_value=_round_probe_value,
                         map_triple_level=_map_triple_level,
                     )
@@ -561,25 +541,26 @@ class HydrosSensorManager:
                             ),
                         )
 
-                    if is_binary_output(output_meta):
-                        power_description = build_output_power_description(
-                            HydrosSensorEntityDescription,
-                            entry=self._entry,
-                            thing_id=thing_id,
-                            output_key=output_key,
-                            output_meta=output_meta,
-                            device_name=device_name,
+                    power_description = build_output_power_description(
+                        HydrosSensorEntityDescription,
+                        entry=self._entry,
+                        thing_id=thing_id,
+                        output_key=output_key,
+                        output_meta=output_meta,
+                        device_name=device_name,
+                    )
+                    if power_description is not None:
+                        descriptions[power_description.key] = (
+                            power_description,
+                            DeviceInfo(
+                                identifiers={(DOMAIN, thing_id)},
+                                name=device_name,
+                                manufacturer=manufacturer,
+                                model=model,
+                            ),
                         )
-                        if power_description is not None:
-                            descriptions[power_description.key] = (
-                                power_description,
-                                DeviceInfo(
-                                    identifiers={(DOMAIN, thing_id)},
-                                    name=device_name,
-                                    manufacturer=manufacturer,
-                                    model=model,
-                                ),
-                            )
+
+                    if is_binary_output(output_meta):
                         continue
 
                     description = build_output_sensor_description(

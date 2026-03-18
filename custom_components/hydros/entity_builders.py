@@ -6,12 +6,12 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntityDescription,
 )
-from homeassistant.components.sensor import SensorEntityDescription, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfPower, UnitOfTemperature, UnitOfVolume
+from homeassistant.const import UnitOfPower, UnitOfTemperature, UnitOfVolume, UnitOfVolumeFlowRate
 from homeassistant.util import slugify
 
-from .types import is_doser_output
+from .types import coerce_int as _coerce_int
 
 
 def build_input_sensor_description(
@@ -21,11 +21,9 @@ def build_input_sensor_description(
     thing_id: str,
     input_key: str,
     sensor_meta: dict[str, Any],
-    temp_fmt: str | None,
     device_name: str,
     sense_mode_map: dict[str, dict[str, Any]],
     probe_mode_meta: dict[int, dict[str, Any]],
-    celsius_to_fahrenheit: Callable[[float], float],
     round_probe_value: Callable[[float], float],
     map_triple_level: Callable[[float | int], str],
 ) -> Optional[SensorEntityDescription]:
@@ -45,11 +43,10 @@ def build_input_sensor_description(
     unit = mapping.get("unit")
     transform: Callable[[float], float] | None = None
     if unit is None and sense_mode == "temp":
-        if str(temp_fmt or "").upper() == "F":
-            unit = UnitOfTemperature.FAHRENHEIT
-            transform = celsius_to_fahrenheit
-        else:
-            unit = UnitOfTemperature.CELSIUS
+        unit = UnitOfTemperature.CELSIUS
+    elif unit is None and sense_mode == "flowrate":
+        unit = UnitOfVolumeFlowRate.LITERS_PER_HOUR
+        mapping["device_class"] = SensorDeviceClass.VOLUME_FLOW_RATE
     elif sensor_type == "probe":
         transform = round_probe_value
     elif sense_mode == "triplelevel":
@@ -295,7 +292,7 @@ def build_output_binary_description(
     return description_cls(
         key=f"{entry.entry_id}-{thing_id}-{slug}",
         name=display_name,
-        device_class=BinarySensorDeviceClass.RUNNING,
+        device_class=None,
         thing_id=thing_id,
         output_key=output_key,
         section="Output",
@@ -324,14 +321,3 @@ def build_rope_leak_description(
         section="Input",
         sense_mode="ropeleak",
     )
-
-
-def _coerce_int(value: Any) -> int | None:
-    if isinstance(value, str):
-        value = value.strip()
-        if not value:
-            return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None

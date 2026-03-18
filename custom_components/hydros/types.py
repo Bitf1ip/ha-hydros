@@ -5,6 +5,7 @@ from typing import Any
 BINARY_OUTPUT_TYPES: set[str] = {
     "smartdoser",
     "simpledoser",
+    "constant",
     "heater",
     "chiller",
     "returnpump",
@@ -28,6 +29,7 @@ BINARY_OUTPUT_TYPES: set[str] = {
 BINARY_OUTPUT_FAMILIES: set[str] = {
     "doser",
     "dose",
+    "constant",
     "heater",
     "chiller",
     "return",
@@ -65,3 +67,15 @@ def is_binary_output(output_meta: dict[str, Any] | None) -> bool:
     if "doser" in type_value:
         return True
     return False
+
+
+def coerce_int(value: Any) -> int | None:
+    """Coerce a value to int, returning None on failure."""
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None

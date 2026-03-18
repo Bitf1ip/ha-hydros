@@ -20,7 +20,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 try:
-    from custom_components.hydros.pyhydros import HydrosAPI, HydrosAPIError, HydrosAuthError
+    from pyhydros import HydrosAPI, HydrosAPIError, HydrosAuthError
 except ImportError as err:  # pragma: no cover
     HydrosAPI = None  # type: ignore[assignment]
     HydrosAPIError = Exception  # type: ignore[assignment]

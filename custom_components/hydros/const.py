@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 DOMAIN = "hydros"
-CONF_USERNAME = "Username"
-CONF_PASSWORD = "Password"
+CONF_USERNAME = "username"
+CONF_PASSWORD = "password"
 CONF_REGION = "region"
 CONF_COLLECTIVES = "collectives"
 DEFAULT_REGION = "us-west-2"

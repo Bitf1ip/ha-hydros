@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "documentation": "https://github.com/Bitf1ip/ha-hydros",
   "issue_tracker": "https://github.com/Bitf1ip/ha-hydros/issues",
-  "requirements": [],
+  "requirements": ["pyhydros"],
   "dependencies": [],
   "codeowners": ["@Bitf1ip"],
   "config_flow": true,

@@ -4,11 +4,12 @@
 Custom Home Assistant integration for Hydros controllers. It connects to the Hydros cloud API to expose inputs, outputs, dosing history, and device health in Home Assistant.
 
 ## Capabilities
-Current focus is on exposing Hydros sensors to home assistant, although controlling Hydros is technically possible, it is not currently supported. 
+This integration is strictly designed for monitoring.
 
-⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood). 
+⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood).
+⚠️ This integration require internet to function and integrate with Hydros' cloud. Network issues will cause sensors to become unavailable (and automation to fail).
 
-🛡️DO leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
+🛡️Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
 
 Example of good usage for this integration includes: long term metrics, triggering alerts, automation to non life supporting 3rd party devices (e.g light, smart switch).
 
@@ -23,13 +24,11 @@ Example of good usage for this integration includes: long term metrics, triggeri
 - **Binary sensors**:
   - Binary outputs (e.g., relays/outlets).
   - Rope leak inputs as binary sensors.
-- **Buttons**:
-  - Debug Sample button (collects one S3 config snapshot + one MQTT payload snapshot).
 - **MQTT**:
   - Subscribes to AWS IoT MQTT for real-time updates.
   - Auto retry + reconnect logic on disconnect.
 - **Periodic refresh**:
-  - Entity list refresh every 30 minutes to remove stale entities.
+  - Entity list refresh every 30 minutes to remove stale entities, while dosing log are pull every 5 minutes.
 
 ## Notes
 - Credentials are stored in Home Assistant config entries.
@@ -37,8 +36,20 @@ Example of good usage for this integration includes: long term metrics, triggeri
 
 ## ⚠️ Safety Warning & Disclaimer 
 
-HA-Hydros is provided "as is" and "with all faults." The author makes no representations or warranties regarding safety, suitability, accuracy, or reliability.
+HA-Hydros is provided “as is” and “with all faults”, without warranty of any kind, express or implied. The author makes no representations or guarantees regarding safety, suitability, accuracy, reliability, availability, or fitness for any particular purpose.
 
-Use at your own risk. Improper configuration or software bugs could lead to equipment malfunction or fire, property damage (e.g., floods), or loss of aquatic life.
+This software is not designed, tested, or intended for safety-critical, life-supporting, or fail-safe control systems. Do not rely on this integration for life-critical functions (e.g. temperature control, circulation, oxygenation) or for scenarios where equipment failure could result in property damage (e.g. floods, electrical hazards, or fire).
 
-Always test new configurations in a dry-run or controlled environment. This project is an independent community effort and is not affiliated with, authorized, maintained, or endorsed by CoralVue Hydros.
+Use of this software is entirely at your own risk. Improper configuration, software defects, network outages, cloud service changes, or unexpected behavior may result in equipment malfunction, property damage, or loss of aquatic life.
+
+Always validate behavior in a controlled or non-critical environment before enabling automations. For critical functions, use Hydros’ native controller features, which are specifically designed with local control, redundancy, and safety safeguards.
+
+In no event shall the author be liable for any direct, indirect, incidental, special, exemplary, or consequential damages arising from the use of, or inability to use, this software.
+
+Nothing in this project constitutes professional, electrical, or safety advice.
+
+This project is an independent, community-driven effort and is not affiliated with, authorized, maintained, or endorsed by CoralVue or Hydros. “Hydros” and “CoralVue” are trademarks of their respective owners and are used for identification purposes only.
+
+## License
+
+Licensed under MIT license
