@@ -7,6 +7,7 @@ Custom Home Assistant integration for Hydros controllers. It connects to the Hyd
 This integration is strictly designed for monitoring.
 
 ⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood).
+
 ⚠️ This integration require internet to function and integrate with Hydros' cloud. Network issues will cause sensors to become unavailable (and automation to fail).
 
 🛡️Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
