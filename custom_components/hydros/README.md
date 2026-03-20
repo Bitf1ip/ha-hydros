@@ -3,7 +3,6 @@
 ## Summary
 Custom Home Assistant integration for Hydros controllers. It connects to the Hydros cloud API to expose inputs, outputs, dosing history, and device health in Home Assistant.
 
-## Capabilities
 This integration is strictly designed for monitoring.
 
 ⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood).
@@ -13,6 +12,8 @@ This integration is strictly designed for monitoring.
 🛡️Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
 
 Example of good usage for this integration includes: long term metrics, triggering alerts, automation to non life supporting 3rd party devices (e.g light, smart switch).
+
+## Capabilities
 
 - **Config flow**: Username/password login and collective or standalone selection.
 - **Sensors**:
@@ -25,9 +26,6 @@ Example of good usage for this integration includes: long term metrics, triggeri
 - **Binary sensors**:
   - Binary outputs (e.g., relays/outlets).
   - Rope leak inputs as binary sensors.
-- **MQTT**:
-  - Subscribes to AWS IoT MQTT for real-time updates.
-  - Auto retry + reconnect logic on disconnect.
 - **Periodic refresh**:
   - Entity list refresh every 30 minutes to remove stale entities, while dosing log are pull every 5 minutes.
 
