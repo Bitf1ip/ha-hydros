@@ -33,7 +33,7 @@ Example of good usage for this integration includes: long term metrics, triggeri
 
 ## Notes
 - Credentials are stored in Home Assistant config entries.
-- Debug samples are stored in memory (not persisted).
+- Debug samples are stored in memory (not persisted). It may contain sensitive information: Anonymize / share only a subset of the information for troubleshooting purpose.
 
 ## ⚠️ Safety Warning & Disclaimer 
 
