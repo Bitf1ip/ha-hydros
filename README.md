@@ -3,6 +3,8 @@
 ## Summary
 Custom Home Assistant integration for Hydros controllers. It connects to the Hydros cloud API to expose inputs, outputs, dosing history, and device health in Home Assistant.
 
+![Example](dashboard.png)
+
 This integration is strictly designed for monitoring.
 
 ⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood).
