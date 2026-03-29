@@ -37,6 +37,19 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
+def _extract_thing_id(thing: dict[str, Any]) -> str | None:
+    """Return the canonical thing identifier expected by the API."""
+    for key in ("id", "thingId", "thing_id", "thingName"):
+        value = thing.get(key)
+        if isinstance(value, str):
+            candidate = value.strip()
+            if key == "thingName":
+                candidate = "".join(candidate.split())
+            if candidate:
+                return candidate
+    return None
+
+
 def _fetch_collectives_sync(username: str, password: str, region: str) -> dict[str, str]:
     if _IMPORT_ERROR is not None:
         raise _IMPORT_ERROR
@@ -49,13 +62,13 @@ def _fetch_collectives_sync(username: str, password: str, region: str) -> dict[s
         if not isinstance(thing, dict):
             continue
 
-        thing_id = thing.get("thingName") or thing.get("id")
+        thing_id = _extract_thing_id(thing)
         if not thing_id:
             continue
 
         thing_type = thing.get("thingType") or thing.get("type") or "Device"
         parent = thing.get("parent") or thing.get("parentThing")
-        friendly = thing.get("friendlyName") or thing_id
+        friendly = thing.get("friendlyName") or thing.get("thingName") or thing_id
 
         if thing_type == "Collective":
             selectable[thing_id] = friendly

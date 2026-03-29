@@ -39,6 +39,11 @@ else:
     _IMPORT_ERROR = None
 
 
+def _normalize_thing_id(value: str) -> str:
+    """Normalize thing identifiers used by the Hydros API."""
+    return "".join(value.split())
+
+
 class HydrosHub:
     """Coordinate Hydros data access for Home Assistant."""
 
@@ -66,7 +71,13 @@ class HydrosHub:
         self._username: str = entry.data[CONF_USERNAME]
         self._password: str = entry.data[CONF_PASSWORD]
         self._region: str = entry.data.get(CONF_REGION, DEFAULT_REGION)
-        self.collective_ids: list[str] = list(entry.data.get(CONF_COLLECTIVES, []))
+        self.collective_ids: list[str] = []
+        for thing_id in entry.data.get(CONF_COLLECTIVES, []):
+            if not isinstance(thing_id, str):
+                continue
+            normalized = _normalize_thing_id(thing_id)
+            if normalized and normalized not in self.collective_ids:
+                self.collective_ids.append(normalized)
 
     @property
     def entry_id(self) -> str:
@@ -131,6 +142,13 @@ class HydrosHub:
                     metadata = await self._hass.async_add_executor_job(api.get_thing, thing_id)
                 except HydrosAPIError as err:
                     _LOGGER.warning("Failed to refresh Hydros thing %s: %s", thing_id, err)
+                    continue
+                except Exception as err:
+                    _LOGGER.warning(
+                        "Failed to refresh Hydros thing %s due to invalid identifier or unexpected error: %s",
+                        thing_id,
+                        err,
+                    )
                     continue
                 cache[thing_id] = metadata
                 initial_status = None
