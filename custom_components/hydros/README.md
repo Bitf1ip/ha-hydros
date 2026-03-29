@@ -1,7 +1,11 @@
 # HA-Hydros (Custom Integration)
 
+<img src="logo.png" alt="Hydros DIY" width="300" />
+
 ## Summary
 Custom Home Assistant integration for Hydros controllers. It connects to the Hydros cloud API to expose inputs, outputs, dosing history, and device health in Home Assistant.
+
+![Example](dashboard.png)
 
 This integration is strictly designed for monitoring.
 
