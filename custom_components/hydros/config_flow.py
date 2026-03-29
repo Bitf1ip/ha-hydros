@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -39,14 +40,21 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 def _extract_thing_id(thing: dict[str, Any]) -> str | None:
     """Return the canonical thing identifier expected by the API."""
-    for key in ("id", "thingId", "thing_id", "thingName"):
+    for key in ("id", "thingId", "thing_id"):
         value = thing.get(key)
         if isinstance(value, str):
             candidate = value.strip()
-            if key == "thingName":
-                candidate = "".join(candidate.split())
             if candidate:
                 return candidate
+
+    thing_name = thing.get("thingName")
+    if isinstance(thing_name, str):
+        candidate = thing_name.strip()
+        if candidate:
+            tail = candidate.split()[-1]
+            if re.fullmatch(r"[A-Za-z0-9_-]{6,}", tail) and any(ch.isdigit() for ch in tail):
+                return tail
+
     return None
 
 

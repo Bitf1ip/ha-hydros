@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import uuid
 import requests
 from collections.abc import Callable
@@ -44,6 +45,40 @@ def _normalize_thing_id(value: str) -> str:
     return "".join(value.split())
 
 
+def _extract_thing_id(thing: dict[str, Any]) -> str | None:
+    """Return the canonical thing identifier expected by the API."""
+    for key in ("id", "thingId", "thing_id"):
+        value = thing.get(key)
+        if isinstance(value, str):
+            candidate = value.strip()
+            if candidate:
+                return candidate
+
+    thing_name = thing.get("thingName")
+    if isinstance(thing_name, str):
+        candidate = thing_name.strip()
+        if candidate:
+            tail = candidate.split()[-1]
+            if re.fullmatch(r"[A-Za-z0-9_-]{6,}", tail) and any(ch.isdigit() for ch in tail):
+                return tail
+
+    return None
+
+
+def _collect_thing_aliases(thing: dict[str, Any]) -> set[str]:
+    aliases: set[str] = set()
+    for key in ("id", "thingId", "thing_id", "thingName", "friendlyName"):
+        value = thing.get(key)
+        if not isinstance(value, str):
+            continue
+        stripped = value.strip()
+        if not stripped:
+            continue
+        aliases.add(stripped.lower())
+        aliases.add(_normalize_thing_id(stripped).lower())
+    return aliases
+
+
 class HydrosHub:
     """Coordinate Hydros data access for Home Assistant."""
 
@@ -52,6 +87,7 @@ class HydrosHub:
         self._entry = entry
         self._api: HydrosAPI | None = None
         self._collective_cache: dict[str, dict[str, Any]] = {}
+        self._collective_profile_names: dict[str, str] = {}
         self._collective_configs: dict[str, dict[str, Any]] = {}
         self._collective_status: dict[str, dict[str, Any]] = {}
         self._config_locks: dict[str, asyncio.Lock] = {}
@@ -89,6 +125,7 @@ class HydrosHub:
 
         try:
             await self._hass.async_add_executor_job(self._ensure_client)
+            await self.async_resolve_collective_ids()
             await self.async_refresh_collective_metadata()
         except (HydrosAuthError, HydrosAPIError) as err:
             _LOGGER.error("Hydros authentication or API error: %s", err)
@@ -102,6 +139,7 @@ class HydrosHub:
             await self._hass.async_add_executor_job(self._disconnect_mqtt)
         self._api = None
         self._collective_cache.clear()
+        self._collective_profile_names.clear()
         self._collective_configs.clear()
         self._config_locks.clear()
         self._collective_status.clear()
@@ -132,6 +170,62 @@ class HydrosHub:
 
     async def async_call_in_executor(self, func: Callable[..., Any], *args: Any) -> Any:
         return await self._hass.async_add_executor_job(func, *args)
+
+    async def async_resolve_collective_ids(self) -> None:
+        api = await self._hass.async_add_executor_job(self._ensure_client)
+
+        try:
+            user_profile = await self._hass.async_add_executor_job(api.get_user)
+        except HydrosAPIError as err:
+            _LOGGER.warning("Failed to resolve Hydros collective ids from profile: %s", err)
+            return
+        except Exception:
+            _LOGGER.debug("Unexpected error resolving Hydros collective ids", exc_info=True)
+            return
+
+        things = user_profile.get("things", []) if isinstance(user_profile, dict) else []
+        alias_to_canonical: dict[str, str] = {}
+        profile_names: dict[str, str] = {}
+
+        for thing in things:
+            if not isinstance(thing, dict):
+                continue
+            canonical = _extract_thing_id(thing)
+            if not canonical:
+                continue
+            friendly = thing.get("friendlyName") or thing.get("name") or thing.get("label")
+            if isinstance(friendly, str) and friendly.strip():
+                profile_names[canonical] = friendly.strip()
+            for alias in _collect_thing_aliases(thing):
+                alias_to_canonical[alias] = canonical
+
+        if profile_names:
+            self._collective_profile_names = profile_names
+
+        if not alias_to_canonical:
+            return
+
+        resolved: list[str] = []
+        changed = False
+        for thing_id in self.collective_ids:
+            key = thing_id.lower()
+            normalized_key = _normalize_thing_id(thing_id).lower()
+            canonical = alias_to_canonical.get(key) or alias_to_canonical.get(normalized_key) or thing_id
+            if canonical != thing_id:
+                changed = True
+            if canonical not in resolved:
+                resolved.append(canonical)
+
+        if changed:
+            self.collective_ids = resolved
+            _LOGGER.info("Resolved Hydros collective ids to canonical values: %s", self.collective_ids)
+            self._hass.config_entries.async_update_entry(
+                self._entry,
+                data={
+                    **self._entry.data,
+                    CONF_COLLECTIVES: self.collective_ids,
+                },
+            )
 
     async def async_refresh_collective_metadata(self) -> None:
         async with self._metadata_lock:
@@ -205,6 +299,18 @@ class HydrosHub:
 
     def get_collective_metadata(self, thing_id: str) -> dict[str, Any] | None:
         return self._collective_cache.get(thing_id)
+
+    def get_collective_display_name(self, thing_id: str) -> str:
+        profile_name = self._collective_profile_names.get(thing_id)
+        if profile_name:
+            return profile_name
+
+        metadata = self.get_collective_metadata(thing_id) or {}
+        for key in ("friendlyName", "name", "label", "displayName", "alias", "thingName"):
+            value = metadata.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return thing_id
 
     @property
     def api(self) -> HydrosAPI | None:

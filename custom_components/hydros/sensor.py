@@ -456,16 +456,80 @@ class HydrosSensorManager:
         descriptions: dict[str, tuple[HydrosSensorEntityDescription, DeviceInfo]] = {}
 
         for thing_id in self._hub.collective_ids:
+            metadata = self._hub.get_collective_metadata(thing_id) or {}
+            device_name = self._hub.get_collective_display_name(thing_id)
+            manufacturer = metadata.get("manufacturer") or "Hydros"
+            model = metadata.get("thingType") or metadata.get("type")
+
+            collective_description = build_collective_description(
+                HydrosSensorEntityDescription,
+                entry=self._entry,
+                thing_id=thing_id,
+                device_name=device_name,
+            )
+            descriptions[collective_description.key] = (
+                collective_description,
+                DeviceInfo(
+                    identifiers={(DOMAIN, thing_id)},
+                    name=device_name,
+                    manufacturer=manufacturer,
+                    model=model,
+                ),
+            )
+
+            mode_description = build_collective_mode_description(
+                HydrosSensorEntityDescription,
+                entry=self._entry,
+                thing_id=thing_id,
+                device_name=device_name,
+            )
+            descriptions[mode_description.key] = (
+                mode_description,
+                DeviceInfo(
+                    identifiers={(DOMAIN, thing_id)},
+                    name=device_name,
+                    manufacturer=manufacturer,
+                    model=model,
+                ),
+            )
+
+            alerts_description = build_collective_alerts_description(
+                HydrosSensorEntityDescription,
+                entry=self._entry,
+                thing_id=thing_id,
+                device_name=device_name,
+            )
+            descriptions[alerts_description.key] = (
+                alerts_description,
+                DeviceInfo(
+                    identifiers={(DOMAIN, thing_id)},
+                    name=device_name,
+                    manufacturer=manufacturer,
+                    model=model,
+                ),
+            )
+
+            debug_description = build_collective_debug_description(
+                HydrosSensorEntityDescription,
+                entry=self._entry,
+                thing_id=thing_id,
+                device_name=device_name,
+            )
+            descriptions[debug_description.key] = (
+                debug_description,
+                DeviceInfo(
+                    identifiers={(DOMAIN, thing_id)},
+                    name=device_name,
+                    manufacturer=manufacturer,
+                    model=model,
+                ),
+            )
+
             try:
                 config = await self._hub.async_get_collective_config(thing_id)
             except Exception as err:
                 _LOGGER.warning("Hydros failed to load config for %s: %s", thing_id, err)
-                continue
-
-            metadata = self._hub.get_collective_metadata(thing_id) or {}
-            device_name = metadata.get("friendlyName") or metadata.get("thingName") or thing_id
-            manufacturer = metadata.get("manufacturer") or "Hydros"
-            model = metadata.get("thingType") or metadata.get("type")
+                config = {}
 
             inputs = config.get("Input")
             if isinstance(inputs, dict):
@@ -585,70 +649,6 @@ class HydrosSensorManager:
                             model=model,
                         ),
                     )
-
-            collective_description = build_collective_description(
-                HydrosSensorEntityDescription,
-                entry=self._entry,
-                thing_id=thing_id,
-                device_name=device_name,
-            )
-            descriptions[collective_description.key] = (
-                collective_description,
-                DeviceInfo(
-                    identifiers={(DOMAIN, thing_id)},
-                    name=device_name,
-                    manufacturer=manufacturer,
-                    model=model,
-                ),
-            )
-
-            mode_description = build_collective_mode_description(
-                HydrosSensorEntityDescription,
-                entry=self._entry,
-                thing_id=thing_id,
-                device_name=device_name,
-            )
-            descriptions[mode_description.key] = (
-                mode_description,
-                DeviceInfo(
-                    identifiers={(DOMAIN, thing_id)},
-                    name=device_name,
-                    manufacturer=manufacturer,
-                    model=model,
-                ),
-            )
-
-            alerts_description = build_collective_alerts_description(
-                HydrosSensorEntityDescription,
-                entry=self._entry,
-                thing_id=thing_id,
-                device_name=device_name,
-            )
-            descriptions[alerts_description.key] = (
-                alerts_description,
-                DeviceInfo(
-                    identifiers={(DOMAIN, thing_id)},
-                    name=device_name,
-                    manufacturer=manufacturer,
-                    model=model,
-                ),
-            )
-
-            debug_description = build_collective_debug_description(
-                HydrosSensorEntityDescription,
-                entry=self._entry,
-                thing_id=thing_id,
-                device_name=device_name,
-            )
-            descriptions[debug_description.key] = (
-                debug_description,
-                DeviceInfo(
-                    identifiers={(DOMAIN, thing_id)},
-                    name=device_name,
-                    manufacturer=manufacturer,
-                    model=model,
-                ),
-            )
 
             if thing_id not in self._subscribed:
                 try:
