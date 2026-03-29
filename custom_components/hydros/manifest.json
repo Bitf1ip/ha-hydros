@@ -1,7 +1,7 @@
 {
   "domain": "hydros",
   "name": "HA-Hydros",
-  "version": "0.1.6",
+  "version": "0.1.5",
   "documentation": "https://github.com/Bitf1ip/ha-hydros",
   "issue_tracker": "https://github.com/Bitf1ip/ha-hydros/issues",
   "requirements": ["pyhydros"],

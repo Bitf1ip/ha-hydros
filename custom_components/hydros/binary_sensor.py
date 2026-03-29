@@ -230,7 +230,7 @@ class HydrosBinarySensorManager:
                 continue
 
             metadata = self._hub.get_collective_metadata(thing_id) or {}
-            device_name = self._hub.get_collective_display_name(thing_id)
+            device_name = metadata.get("friendlyName") or metadata.get("thingName") or thing_id
             manufacturer = metadata.get("manufacturer") or "Hydros"
             model = metadata.get("thingType") or metadata.get("type")
 
