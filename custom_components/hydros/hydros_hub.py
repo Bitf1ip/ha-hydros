@@ -37,13 +37,6 @@ except ImportError as err:  # pragma: no cover
     _IMPORT_ERROR = err
 else:
     _IMPORT_ERROR = None
-
-
-def _normalize_thing_id(value: str) -> str:
-    """Normalize thing identifiers used by the Hydros API."""
-    return "".join(value.split())
-
-
 def _extract_profile_thing_id(thing: dict[str, Any]) -> str | None:
     """Return preferred Hydros identifier from profile payload."""
     thing_name = thing.get("thingName")
@@ -147,7 +140,7 @@ class HydrosHub:
         return await self._hass.async_add_executor_job(func, *args)
 
     async def async_resolve_collective_ids(self) -> None:
-        """Resolve legacy normalized IDs to the real profile thingName values."""
+        """Resolve stored collective IDs to profile-provided thing identifiers."""
         api = await self._hass.async_add_executor_job(self._ensure_client)
         try:
             user_profile = await self._hass.async_add_executor_job(api.get_user)
@@ -172,7 +165,6 @@ class HydrosHub:
                 if not stripped:
                     continue
                 alias_to_actual[stripped.lower()] = actual
-                alias_to_actual[_normalize_thing_id(stripped).lower()] = actual
 
         if not alias_to_actual:
             return
@@ -181,8 +173,7 @@ class HydrosHub:
         resolved: list[str] = []
         for thing_id in self.collective_ids:
             stripped = thing_id.strip()
-            normalized = _normalize_thing_id(stripped)
-            actual = alias_to_actual.get(stripped.lower()) or alias_to_actual.get(normalized.lower()) or stripped
+            actual = alias_to_actual.get(stripped.lower()) or stripped
             if actual != thing_id:
                 changed = True
             if actual not in resolved:
