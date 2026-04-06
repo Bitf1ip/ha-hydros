@@ -5,11 +5,14 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    CONF_ACCEPT_REMOTE_CONTROL_DISCLAIMER,
     CONF_COLLECTIVES,
+    CONF_ENABLE_REMOTE_CONTROL,
     CONF_PASSWORD,
     CONF_REGION,
     CONF_USERNAME,
@@ -198,3 +201,87 @@ class HydrosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if len(deduped) == 1:
             return deduped[0]
         return ", ".join(deduped)
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> "HydrosOptionsFlow":
+        return HydrosOptionsFlow(config_entry)
+
+
+class HydrosOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
+    def __init__(self, config_entry: ConfigEntry) -> None:
+        self._config_entry = config_entry
+        self._pending_enable_remote = False
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        current_enabled = bool(
+            self._config_entry.options.get(
+                CONF_ENABLE_REMOTE_CONTROL,
+                self._config_entry.data.get(CONF_ENABLE_REMOTE_CONTROL, False),
+            )
+        )
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_ENABLE_REMOTE_CONTROL,
+                    default=current_enabled,
+                ): bool,
+            }
+        )
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="init",
+                data_schema=schema,
+                errors={},
+            )
+
+        enable_remote = bool(user_input.get(CONF_ENABLE_REMOTE_CONTROL, False))
+        if not enable_remote:
+            return self.async_create_entry(
+                title="",
+                data={CONF_ENABLE_REMOTE_CONTROL: False},
+            )
+
+        self._pending_enable_remote = True
+        return await self.async_step_disclaimer()
+
+    async def async_step_disclaimer(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_ACCEPT_REMOTE_CONTROL_DISCLAIMER,
+                    default=False,
+                ): bool,
+            }
+        )
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="disclaimer",
+                data_schema=schema,
+                errors={},
+            )
+
+        accepted = bool(user_input.get(CONF_ACCEPT_REMOTE_CONTROL_DISCLAIMER, False))
+        if not accepted:
+            return self.async_show_form(
+                step_id="disclaimer",
+                data_schema=schema,
+                errors={"base": "ack_required"},
+            )
+
+        if not self._pending_enable_remote:
+            return self.async_create_entry(
+                title="",
+                data={CONF_ENABLE_REMOTE_CONTROL: False},
+            )
+
+        return self.async_create_entry(
+            title="",
+            data={CONF_ENABLE_REMOTE_CONTROL: True},
+        )

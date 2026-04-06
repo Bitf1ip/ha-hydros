@@ -382,6 +382,24 @@ class HydrosHub:
     def get_debug_sample(self, thing_id: str) -> dict[str, Any] | None:
         return self._debug_samples.get(thing_id)
 
+    async def async_change_mode(self, thing_id: str, mode: str) -> None:
+        """Change collective mode using pyhydros."""
+        if not thing_id or mode is None:
+            return
+
+        api = await self._hass.async_add_executor_job(self._ensure_client)
+
+        def _change_mode() -> Any:
+            try:
+                return api.change_mode(thing_id, mode)
+            except TypeError:
+                try:
+                    return api.change_mode(thing_id=thing_id, mode=mode)
+                except TypeError:
+                    return api.change_mode(thing_id=thing_id, mode_id=mode)
+
+        await self._hass.async_add_executor_job(_change_mode)
+
     def signal_for_collective(self, thing_id: str) -> str:
         return SIGNAL_COLLECTIVE_UPDATED.format(
             entry=self._entry.entry_id,
@@ -440,12 +458,12 @@ class HydrosHub:
                 if key in config:
                     continue
                 direct = source.get(key)
-                if isinstance(direct, dict):
+                if isinstance(direct, dict) or (key == "Mode" and isinstance(direct, list)):
                     config[key] = direct
                     continue
                 alt_key = key.lower()
                 alt_value = source.get(alt_key)
-                if isinstance(alt_value, dict):
+                if isinstance(alt_value, dict) or (key == "Mode" and isinstance(alt_value, list)):
                     config[key] = alt_value
 
         if "Input" not in config:
@@ -496,7 +514,10 @@ class HydrosHub:
                 if not config:
                     config = {}
                 for key, value in inline_config.items():
-                    if key not in config and isinstance(value, dict):
+                    if key not in config and (
+                        isinstance(value, dict)
+                        or (key == "Mode" and isinstance(value, list))
+                    ):
                         config[key] = value
 
             if not config:

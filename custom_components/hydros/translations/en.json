@@ -20,5 +20,26 @@
     "abort": {
       "no_collectives": "No collectives available for this account."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Remote control",
+        "description": "Enable or disable Hydros remote control from Home Assistant.",
+        "data": {
+          "enable_remote_control": "Enable remote control"
+        }
+      },
+      "disclaimer": {
+        "title": "Safety disclaimer",
+        "description": "⚠️ Remote control may pose safety risks; exercise caution.\n\nMake sure to set Hydros' modes timeout (in mode configuration within their app) so normal mode is restored automatically should something fail.\n\nNetwork outages, cloud/API changes, software defects, and misconfiguration (such as a problematic automation) can cause unsafe behavior. Always use Hydros native application for critical control.\n\nDo not rely on this integration for life-critical functions (temperature control, pumps, circulation, oxygenation) or where equipment/property damage may occur (flooding, electrical hazards, fire).\n\nBy enabling remote control, you acknowledge these risks and accept full responsibility.",
+        "data": {
+          "accept_remote_control_disclaimer": "I understand and accept this risk"
+        }
+      }
+    },
+    "error": {
+      "ack_required": "You must accept the disclaimer to enable remote control."
+    }
   }
 }

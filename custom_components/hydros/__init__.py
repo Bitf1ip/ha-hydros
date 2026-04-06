@@ -14,7 +14,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hub.async_setup()
 
     domain_data = hass.data.setdefault(DOMAIN, {})
-    domain_data[entry.entry_id] = {"hub": hub}
+    entry_data = {"hub": hub}
+    domain_data[entry.entry_id] = entry_data
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     if PLATFORMS:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
