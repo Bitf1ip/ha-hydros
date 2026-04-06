@@ -86,6 +86,11 @@ _OUTPUT_STATE_LABELS = {
     -1: "auto",
 }
 
+_SCALED_OUTPUT_STATE_ALIASES = {
+    0: 0,
+    10000: 1,
+}
+
 OUTPUT_STATE_ALIASES = {
     "off": 0,
     "on": 1,
@@ -291,6 +296,8 @@ def _map_output_state_label(payload: dict[str, Any], metadata: dict[str, Any] | 
             state_value = int(raw_state)
         except (TypeError, ValueError):
             return str(raw_state)
+
+    state_value = _SCALED_OUTPUT_STATE_ALIASES.get(state_value, state_value)
 
     return _OUTPUT_STATE_LABELS.get(state_value, str(state_value))
 
