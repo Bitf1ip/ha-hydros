@@ -227,7 +227,20 @@ class HydrosModeSelect(SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         mode_value = self._option_to_mode.get(option, option)
-        await self._hub.async_change_mode(self._thing_id, mode_value)
+        try:
+            await self._hub.async_change_mode(self._thing_id, mode_value)
+        except Exception:
+            # The command failed (e.g. deleted mode, verification mismatch).
+            # Fetch the authoritative status from the REST API (bypasses
+            # MQTT entirely) so the entity reflects the real current mode.
+            await self._async_refresh_options(force=True)
+            try:
+                await self._hub.async_force_status_from_api(self._thing_id)
+            except Exception:  # noqa: BLE001
+                _LOGGER.debug(
+                    "API status refresh failed for %s", self._thing_id
+                )
+            raise
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -262,11 +275,16 @@ class HydrosModeSelect(SelectEntity):
         self.schedule_update_ha_state()
 
     def _handle_config_signal(self, _: str) -> None:
-        self.hass.async_create_task(self._async_refresh_options())
+        self.hass.loop.call_soon_threadsafe(
+            self.hass.async_create_task,
+            self._async_refresh_options(),
+        )
 
-    async def _async_refresh_options(self) -> None:
+    async def _async_refresh_options(self, force: bool = False) -> None:
         if not self._thing_id:
             return
+        if force:
+            self._hub.invalidate_collective_config(self._thing_id)
         try:
             config = await self._hub.async_get_collective_config(self._thing_id)
         except Exception as err:
