@@ -67,6 +67,7 @@ class HydrosHub:
         self._dosing_day_cache: dict[tuple[str, str], datetime.date] = {}
         self._dosing_seen: dict[tuple[str, str], set[str]] = {}
         self._subscriptions: set[str] = set()
+        self._pending_subscriptions: set[str] = set()
         self._subscription_watchdogs: dict[str, asyncio.TimerHandle] = {}
         self._status_handlers: dict[str, Callable[[str, Any], None]] = {}
         self._debug_samples: dict[str, dict[str, Any]] = {}
@@ -112,6 +113,7 @@ class HydrosHub:
         self._config_locks.clear()
         self._collective_status.clear()
         self._subscriptions.clear()
+        self._pending_subscriptions.clear()
         for handle in self._subscription_watchdogs.values():
             handle.cancel()
         self._subscription_watchdogs.clear()
@@ -609,6 +611,24 @@ class HydrosHub:
                 raise
 
             self._subscriptions.add(thing_id)
+
+    def async_schedule_collective_subscription(self, thing_id: str) -> None:
+        """Schedule a non-blocking MQTT subscription attempt for a collective."""
+        if not thing_id:
+            return
+        if thing_id in self._subscriptions or thing_id in self._pending_subscriptions:
+            return
+
+        self._pending_subscriptions.add(thing_id)
+        self._hass.async_create_task(self._async_subscribe_collective_status_safe(thing_id))
+
+    async def _async_subscribe_collective_status_safe(self, thing_id: str) -> None:
+        try:
+            await self.async_subscribe_collective_status(thing_id)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Hydros failed to subscribe to %s: %s", thing_id, err)
+        finally:
+            self._pending_subscriptions.discard(thing_id)
 
     def _subscribe_collective_status_blocking(
         self, api: HydrosAPI, thing_id: str

@@ -7,6 +7,10 @@
   "documentation": "https://github.com/Bitf1ip/ha-hydros",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/Bitf1ip/ha-hydros/issues",
-  "requirements": ["pyhydros==0.4.1"],
-  "version": "0.3.4"
+  "requirements": [
+    "pyhydros==0.4.1",
+    "awsiotsdk==1.30.0",
+    "awscrt==0.34.1"
+  ],
+  "version": "0.3.5"
 }

@@ -164,6 +164,8 @@ async def async_setup_entry(
 
     if entities:
         async_add_entities(entities)
+        for thing_id in hub.collective_ids:
+            hub.async_schedule_collective_subscription(thing_id)
 
 
 class HydrosModeSelect(SelectEntity):
@@ -259,9 +261,6 @@ class HydrosModeSelect(SelectEntity):
                 self._handle_config_signal,
             )
         )
-
-        if self._thing_id:
-            await self._hub.async_subscribe_collective_status(self._thing_id)
 
         await self._async_refresh_options()
 

@@ -376,7 +376,6 @@ class HydrosSensorManager:
         self._async_add_entities = async_add_entities
         self._entities: dict[str, HydrosSensor] = {}
         self._refresh_lock = asyncio.Lock()
-        self._subscribed: set[str] = set()
         self._config_unsubs: list[Callable[[], None]] = []
         self._refresh_unsub: Callable[[], None] | None = None
 
@@ -393,7 +392,6 @@ class HydrosSensorManager:
             self._refresh_unsub()
             self._refresh_unsub = None
         self._entities.clear()
-        self._subscribed.clear()
 
     async def _refresh_entities(self, *_: Any) -> None:
         async with self._refresh_lock:
@@ -427,6 +425,9 @@ class HydrosSensorManager:
 
             if new_entities:
                 self._async_add_entities(new_entities)
+
+            for thing_id in self._hub.collective_ids:
+                self._hub.async_schedule_collective_subscription(thing_id)
 
             if _LOGGER.isEnabledFor(logging.DEBUG):
                 _LOGGER.debug(
@@ -698,14 +699,6 @@ class HydrosSensorManager:
                     model=model,
                 ),
             )
-
-            if thing_id not in self._subscribed:
-                try:
-                    await self._hub.async_subscribe_collective_status(thing_id)
-                except Exception as err:
-                    _LOGGER.warning("Hydros failed to subscribe to %s: %s", thing_id, err)
-                else:
-                    self._subscribed.add(thing_id)
 
         return descriptions
 
@@ -1118,9 +1111,6 @@ class HydrosSensor(SensorEntity):
             self._hub.signal_for_collective(self._thing_id),
             self._handle_signal,
         )
-
-        if self._thing_id:
-            await self._hub.async_subscribe_collective_status(self._thing_id)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._remove_dispatcher:

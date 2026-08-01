@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.3.5 - 2026-07-31
+
+### Fixed
+- Pin a matched AWS IoT SDK dependency pair in the integration manifest (`awsiotsdk==1.30.0`, `awscrt==0.34.1`) to prevent native constructor/signature mismatches that can leave all entities unavailable on newer Python runtimes.
+- Make MQTT subscription attempts non-fatal to entity/platform setup by scheduling subscriptions in the background instead of awaiting them during `async_added_to_hass`.
+
 ## 0.3.4 - 2026-05-24
 
 ### Added
