@@ -1,305 +1,110 @@
+"""Select platform: the device's operating ``mode`` override (override
+metadata ``type == "mode"``), e.g. Normal/Feeding/Water Change -- plus
+``bool``/``flag``-type overridable outputs, exposed as a discrete
+On/Off/Auto (or Off/Auto) choice rather than a plain on/off switch, since
+neither type is actually a two-state toggle: both can also be cleared back
+to "Auto" (running on the device's own schedule), and ``flag`` outputs
+(e.g. dosers) only accept ``true`` (shown as "Off") or ``null`` ("Auto"); the
+API rejects ``false`` for them with HTTP 400.
+"""
+
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable
-
-from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ENABLE_REMOTE_CONTROL, DOMAIN
-from .hydros_hub import HydrosHub
+from pyhydros2 import DeviceState
 
-_LOGGER = logging.getLogger(__name__)
-
-
-@dataclass
-class HydrosModeSelectEntityDescription(SelectEntityDescription):
-    thing_id: str | None = None
-
-
-def _extract_modes_from_config(
-    config: dict[str, Any] | None,
-) -> tuple[list[str], dict[str, str], dict[str, str]]:
-    options: list[str] = []
-    option_to_mode: dict[str, str] = {}
-    value_to_option: dict[str, str] = {}
-
-    if not isinstance(config, dict):
-        return options, option_to_mode, value_to_option
-
-    def _iter_mode_items(source: Any) -> list[tuple[Any, Any]]:
-        if isinstance(source, dict):
-            return list(source.items())
-        if isinstance(source, list):
-            return [(idx, item) for idx, item in enumerate(source)]
-        return []
-
-    mode_sources: list[Any] = []
-    for key in ("Mode", "mode", "Modes", "modes"):
-        if key in config:
-            mode_sources.append(config.get(key))
-
-    option_block = config.get("Option")
-    if isinstance(option_block, dict):
-        for key, value in option_block.items():
-            if "mode" not in str(key).lower():
-                continue
-            if isinstance(value, (dict, list)):
-                mode_sources.append(value)
-
-    for mode_source in mode_sources:
-        for mode_key, mode_meta in _iter_mode_items(mode_source):
-            mode_id = str(mode_key).strip()
-            if not mode_id and not isinstance(mode_meta, dict):
-                continue
-
-            option: str | None = None
-            if isinstance(mode_meta, dict):
-                if bool(mode_meta.get("invisible") or mode_meta.get("hidden")):
-                    continue
-                mode_id = str(
-                    mode_meta.get("mode")
-                    or mode_meta.get("id")
-                    or mode_meta.get("modeId")
-                    or mode_meta.get("modeID")
-                    or mode_meta.get("value")
-                    or mode_meta.get("key")
-                    or mode_id
-                ).strip() or str(mode_key).strip()
-                option = (
-                    str(
-                        mode_meta.get("friendlyName")
-                        or mode_meta.get("name")
-                        or mode_meta.get("label")
-                        or mode_meta.get("modeName")
-                        or mode_meta.get("title")
-                        or mode_meta.get("text")
-                        or mode_id
-                    )
-                    .strip()
-                    or mode_id
-                )
-            else:
-                option = str(mode_meta).strip() or mode_id
-
-            if not mode_id or not option:
-                continue
-
-            if option not in options:
-                options.append(option)
-            option_to_mode[option] = mode_id
-
-            value_to_option[mode_id] = option
-            value_to_option[option] = option
-            value_to_option[mode_id.lower()] = option
-            value_to_option[option.lower()] = option
-
-    return options, option_to_mode, value_to_option
+from .const import DOMAIN
+from .coordinator import HydrosDevice
+from .entity import HydrosEntity
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    remote_control_enabled = bool(
-        entry.options.get(
-            CONF_ENABLE_REMOTE_CONTROL,
-            entry.data.get(CONF_ENABLE_REMOTE_CONTROL, False),
-        )
-    )
-    if not remote_control_enabled:
-        _LOGGER.debug(
-            "Hydros remote control disabled for entry %s; mode select entities are hidden",
-            entry.entry_id,
-        )
-        registry = er.async_get(hass)
-        for registry_entry in list(registry.entities.values()):
-            if registry_entry.config_entry_id != entry.entry_id:
-                continue
-            if registry_entry.platform != DOMAIN:
-                continue
-            unique_id = registry_entry.unique_id or ""
-            if unique_id.endswith("-mode-select"):
-                registry.async_remove(registry_entry.entity_id)
-        return
+    devices: dict[str, HydrosDevice] = hass.data[DOMAIN][entry.entry_id]["devices"]
+    entities: list[SelectEntity] = []
 
-    entry_data = hass.data[DOMAIN][entry.entry_id]
-    if isinstance(entry_data, HydrosHub):
-        entry_data = {"hub": entry_data}
-        hass.data[DOMAIN][entry.entry_id] = entry_data
+    for device in devices.values():
+        for item in device.override_metadata:
+            if item.is_mode:
+                entities.append(HydrosModeSelect(device, item.key, item.name, list(item.commands)))
+            elif item.type == "bool":
+                entities.append(HydrosOverrideSelect(device, item.key, item.name, ("Auto", "On", "Off")))
+            elif item.type == "flag":
+                entities.append(
+                    HydrosOverrideSelect(device, item.key, item.name, ("Auto", "Off"), flag=True)
+                )
 
-    hub: HydrosHub = entry_data["hub"]
-
-    entities: list[HydrosModeSelect] = []
-    for thing_id in hub.collective_ids:
-        metadata = hub.get_collective_metadata(thing_id) or {}
-        device_name = metadata.get("friendlyName") or metadata.get("thingName") or thing_id
-        manufacturer = metadata.get("manufacturer") or "Hydros"
-        model = metadata.get("thingType") or metadata.get("type")
-        description = HydrosModeSelectEntityDescription(
-            key=f"{entry.entry_id}-{thing_id}-mode-select",
-            name=f"{device_name} Mode Select",
-            thing_id=thing_id,
-        )
-        entities.append(
-            HydrosModeSelect(
-                hub=hub,
-                description=description,
-                device_info=DeviceInfo(
-                    identifiers={(DOMAIN, thing_id)},
-                    name=device_name,
-                    manufacturer=manufacturer,
-                    model=model,
-                ),
-            )
-        )
-
-    if entities:
-        async_add_entities(entities)
-        for thing_id in hub.collective_ids:
-            hub.async_schedule_collective_subscription(thing_id)
+    async_add_entities(entities)
 
 
-class HydrosModeSelect(SelectEntity):
-    _attr_has_entity_name = True
-
+class HydrosModeSelect(HydrosEntity, SelectEntity):
     def __init__(
-        self,
-        *,
-        hub: HydrosHub,
-        description: HydrosModeSelectEntityDescription,
-        device_info: DeviceInfo,
+        self, device: HydrosDevice, override_key: str, name: str, options: list[str]
     ) -> None:
-        self._hub = hub
-        self.entity_description = description
-        self._device_info = device_info
-        self._thing_id = description.thing_id or ""
-        self._attr_unique_id = description.key
-        self._attr_name = "Mode"
-        self._attr_options: list[str] = []
-        self._option_to_mode: dict[str, str] = {}
-        self._value_to_option: dict[str, str] = {}
-        self._remove_dispatchers: list[Callable[[], None]] = []
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return self._device_info
-
-    @property
-    def available(self) -> bool:
-        if not self._thing_id:
-            return False
-        last_ts = self._hub.get_latest_status_ts(self._thing_id)
-        if not last_ts:
-            return False
-        delta = (datetime.now(timezone.utc) - last_ts).total_seconds()
-        return delta <= 30
+        super().__init__(
+            device,
+            unique_id=f"{device.device_id}-{device.unique_key(override_key, name)}",
+            name=name,
+        )
+        self._override_key = override_key
+        self._attr_options = options
 
     @property
     def current_option(self) -> str | None:
-        payload = self._hub.get_collective_status_payload(self._thing_id) or {}
-        mode = payload.get("mode")
-        if mode is None:
-            return None
-
-        mode_str = str(mode).strip()
-        if not mode_str:
-            return None
-
-        option = self._value_to_option.get(mode_str)
-        if option is not None:
-            return option
-
-        option = self._value_to_option.get(mode_str.lower())
-        if option is not None:
-            return option
-
-        if mode_str in self.options:
-            return mode_str
-
-        return None
+        state: DeviceState = self.coordinator.data
+        return state.mode
 
     async def async_select_option(self, option: str) -> None:
-        mode_value = self._option_to_mode.get(option, option)
-        try:
-            await self._hub.async_change_mode(self._thing_id, mode_value)
-        except Exception:
-            # The command failed (e.g. deleted mode, verification mismatch).
-            # Fetch the authoritative status from the REST API (bypasses
-            # MQTT entirely) so the entity reflects the real current mode.
-            await self._async_refresh_options(force=True)
-            try:
-                await self._hub.async_force_status_from_api(self._thing_id)
-            except Exception:  # noqa: BLE001
-                _LOGGER.debug(
-                    "API status refresh failed for %s", self._thing_id
-                )
-            raise
+        await self._device.async_send_command(self._override_key, option)
 
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
 
-        self._remove_dispatchers.append(
-            async_dispatcher_connect(
-                self.hass,
-                self._hub.signal_for_collective(self._thing_id),
-                self._handle_collective_signal,
-            )
+class HydrosOverrideSelect(HydrosEntity, SelectEntity):
+    """Tri-state (``bool``) or bi-state (``flag``) override control.
+
+    ``flag``-type outputs (e.g. dosers) only accept ``true``/``null`` from
+    the API -- sending ``false`` is rejected with HTTP 400. ``true`` means
+    "Suspend Dosing", which the Hydros app shows as "Off"; ``null`` is "Auto".
+    """
+
+    def __init__(
+        self,
+        device: HydrosDevice,
+        override_key: str,
+        output_name: str,
+        options: tuple[str, ...],
+        *,
+        flag: bool = False,
+    ) -> None:
+        super().__init__(
+            device,
+            unique_id=f"{device.device_id}-{device.unique_key(override_key, output_name)}",
+            name=output_name,
         )
-        self._remove_dispatchers.append(
-            async_dispatcher_connect(
-                self.hass,
-                self._hub.signal_for_config(self._thing_id),
-                self._handle_config_signal,
-            )
-        )
+        self._override_key = override_key
+        self._output_name = output_name
+        self._flag = flag
+        self._attr_options = list(options)
 
-        await self._async_refresh_options()
+    @property
+    def current_option(self) -> str | None:
+        state: DeviceState = self.coordinator.data
+        overridden = state.output_overridden(self._output_name)
+        if overridden is None:
+            return None
+        if not overridden:
+            return "Auto"
+        if self._flag:
+            return "Off"
+        return "On" if state.output_on(self._output_name) else "Off"
 
-    async def async_will_remove_from_hass(self) -> None:
-        for unsub in self._remove_dispatchers:
-            unsub()
-        self._remove_dispatchers.clear()
-        await super().async_will_remove_from_hass()
-
-    def _handle_collective_signal(self, _: str) -> None:
-        self.schedule_update_ha_state()
-
-    def _handle_config_signal(self, _: str) -> None:
-        self.hass.loop.call_soon_threadsafe(
-            self.hass.async_create_task,
-            self._async_refresh_options(),
-        )
-
-    async def _async_refresh_options(self, force: bool = False) -> None:
-        if not self._thing_id:
-            return
-        if force:
-            self._hub.invalidate_collective_config(self._thing_id)
-        try:
-            config = await self._hub.async_get_collective_config(self._thing_id)
-        except Exception as err:
-            _LOGGER.debug("Unable to refresh Hydros modes for %s: %s", self._thing_id, err)
-            return
-
-        options, option_to_mode, value_to_option = _extract_modes_from_config(config)
-        changed = (
-            options != self._attr_options
-            or option_to_mode != self._option_to_mode
-            or value_to_option != self._value_to_option
-        )
-
-        self._attr_options = options
-        self._option_to_mode = option_to_mode
-        self._value_to_option = value_to_option
-
-        if changed:
-            self.async_write_ha_state()
+    async def async_select_option(self, option: str) -> None:
+        if self._flag:
+            value = True if option == "Off" else None
+        else:
+            value = {"On": True, "Off": False, "Auto": None}[option]
+        await self._device.async_put_override(self._override_key, value, self._output_name)

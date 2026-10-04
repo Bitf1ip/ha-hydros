@@ -3,43 +3,51 @@
     "flow_title": "Hydros",
     "step": {
       "user": {
-        "title": "Connect to Hydros",
-        "description": "Enter the credentials used for the Hydros web portal."
+        "title": "Add a Hydros device",
+        "description": "Enter your CoralVue provider key and the device key generated for this device or collective in the HYDROS app. See [Getting your API keys](https://github.com/Bitf1ip/ha-hydros#getting-your-api-keys).",
+        "data": {
+          "provider_key": "Provider key",
+          "device_key": "Device key",
+          "name": "Name (leave blank to use the collective/device name)"
+        }
       },
-      "collectives": {
-        "title": "Select collectives",
-        "description": "Choose one or more collectives to expose in Home Assistant."
+      "add_another": {
+        "title": "Add another device?",
+        "description": "Each Hydros device or collective has its own device key. Add another one to this entry now, or finish.",
+        "data": {
+          "add_another": "Add another device"
+        }
+      },
+      "reauth_keys": {
+        "title": "Update API keys",
+        "description": "Hydros rejected the API keys for \"{device}\". Enter the new key(s), or leave a field blank to keep the current one.",
+        "data": {
+          "provider_key": "Provider key",
+          "device_key": "Device key"
+        }
+      },
+      "reauth_device": {
+        "title": "Re-authenticate device",
+        "description": "The Hydros integration now uses API keys instead of your account login. Enter a provider/device key pair for the device previously known as \"{thing_id}\". See [Getting your API keys](https://github.com/Bitf1ip/ha-hydros#getting-your-api-keys).",
+        "data": {
+          "provider_key": "Provider key",
+          "device_key": "Device key",
+          "name": "Name (leave blank to use the collective/device name)"
+        }
       }
     },
     "error": {
-      "invalid_auth": "The provided credentials are invalid.",
+      "invalid_auth": "The provided API key is invalid.",
       "cannot_connect": "Unable to reach the Hydros service.",
-      "unknown": "Unexpected error occurred.",
-      "select_collective": "Select at least one collective."
+      "already_configured": "This Hydros device is already configured.",
+      "wrong_device": "These keys belong to a different Hydros device.",
+      "unknown": "Unexpected error occurred. Check Home Assistant's logs for details."
     },
     "abort": {
-      "no_collectives": "No collectives available for this account."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Remote control",
-        "description": "Enable or disable Hydros remote control from Home Assistant.",
-        "data": {
-          "enable_remote_control": "Enable remote control"
-        }
-      },
-      "disclaimer": {
-        "title": "Safety disclaimer",
-        "description": "⚠️ Always use the Hydros native application for critical control.\n\nNetwork outages, cloud/API changes, software defects, and misconfiguration (such as a problematic automation) can cause unsafe behavior. The native application has built-in safeguards that this integration cannot replicate.\n\nSet timeouts on all your Hydros modes (in the mode configuration within the Hydros app) so the default mode is restored automatically if a command is missed.\n\nBy enabling remote control, you acknowledge these risks and accept full responsibility.",
-        "data": {
-          "accept_remote_control_disclaimer": "I understand and accept the risks"
-        }
-      }
-    },
-    "error": {
-      "ack_required": "You must accept the disclaimer to enable remote control."
+      "already_in_progress": "This Hydros device is already being set up.",
+      "reauth_successful": "Re-authentication was successful.",
+      "no_collectives": "This entry has no legacy devices recorded to migrate; nothing to re-authenticate."
     }
   }
 }
+

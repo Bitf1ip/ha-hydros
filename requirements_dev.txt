@@ -1,4 +1,8 @@
 homeassistant
-pyhydros
+# Editable install of the sibling pyhydros2 checkout (see
+# .devcontainer/ha-hydros.code-workspace) instead of the published PyPI
+# package, so local changes (including switching branches/stashing) in
+# ../pyhydros2 take effect immediately without reinstalling.
+-e ../pyhydros2
 pytest
 pytest-homeassistant-custom-component

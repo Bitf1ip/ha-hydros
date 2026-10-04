@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.4.0-beta - 2026-10-03
+
+### Changed (breaking)
+- Rebuilt on CoralVue's official [HYDROS Public API](https://www.coralvuehydros.com/api/) through the new `pyhydros2` library, replacing the unofficial Cognito/MQTT connection. Your Hydros username and password are no longer used: each device or collective needs a **provider key** and a **device key** (see "Getting your API keys" in the README).
+- Existing installs ask you to re-authenticate. Enter a key pair for each collective you had configured, and entities and their history are moved over wherever a matching entity exists in the new API. Entities without an equivalent are left as they are and can be deleted.
+- Device state refreshes every 7 seconds (it was MQTT push); dosing totals every 5 minutes.
+- Requires Home Assistant 2026.8 or newer.
+- The API keys field is masked, and re-authentication now also works when a key is revoked or replaced.
+
+### Added
+- Controls (need a read & write device key): On/Off/Auto selects for outputs, Auto/Off for dosers (Off suspends dosing), sliders for variable outputs with a **Resume Schedule** button, an operating-mode select, and buttons and number inputs for output commands such as a doser's manual dose, reverse dose and set reservoir.
+- A **Running** binary sensor for each output.
+- A **Mode Ends** sensor that shows when a timed mode such as Water Change ends.
+- Per-controller health devices with bus voltage and current, temperature, boot time, last report, Wi-Fi and SD card status, and self-test counts.
+- Output voltage, current, power and frequency sensors, dosing reservoir level, a Total Power sensor, an alerts summary, firmware version and collective status.
+- The state-polling session is stored so restarts and reloads don't use up the API's limit of 5 new sessions per hour.
+
+### Removed
+- The Debug Sample and MQTT Health sensors, and the remote-control opt-in and disclaimer (controls now follow the permission of your device key).
+- The periodic entity-list refresh.
+
+### Known limitations
+- The API reports no units, so analog input units are guessed from the firmware log type and the input name.
+- Controller devices are named after their node ID, because the API doesn't return names for the controllers inside a collective. Use one device key per controller for friendly names, or rename them in Home Assistant.
+- Collective and Wi-Fi/SD card status values are shown as raw numbers because their meanings are undocumented.
+- If two outputs share an API key, their entities are told apart by name.
+
 ## 0.3.5 - 2026-07-31
 
 ### Fixed

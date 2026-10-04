@@ -2,12 +2,23 @@
 
 <img src="custom_components/hydros/logo.png" alt="Hydros DIY" width="300" />
 
+## Getting your API keys
+
+This integration uses CoralVue's official [HYDROS Public API](https://www.coralvuehydros.com/api/), which needs two keys:
+
+1. **Provider key**: issued by CoralVue. Request one with the form at <https://www.coralvuehydros.com/api/#request-provider-key>. Individuals can request an unlisted provider key for personal use, such as this integration.
+2. **Device key**: generated in the HYDROS app (Device Properties → Manage API Keys), one per device or collective. When generating it, select your provider key. Choose **read & write** permission if you want to control outputs from Home Assistant; a read-only key can only monitor.
+
+Then add the integration in Home Assistant (**Settings → Devices & services → Add integration → HA-Hydros**) and enter both keys.
+
+Treat both keys like passwords: don't share them or post them in issues or logs. Per CoralVue, API access is free through 2026, and stays free afterwards for up to 20 device keys per provider key.
+
+**Upgrading from a version that used your Hydros username and password?** Home Assistant asks you to re-authenticate. Enter a provider/device key pair for each collective you had configured. Existing entities, and their history, are moved over wherever a matching entity exists in the new API.
+
 ## Summary
 Custom Home Assistant integration for Hydros controllers. It connects to the Hydros cloud API to expose inputs, outputs, dosing history, and device health in Home Assistant.
 
 ![Example](dashboard.png)
-
-This integration is strictly designed for monitoring.
 
 ⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood).
 
@@ -19,23 +30,20 @@ Example of good usage for this integration includes: long term metrics, triggeri
 
 ## Capabilities
 
-- **Config flow**: Username/password login and collective or standalone selection.
+- **Config flow**: a provider key and device key per Hydros device or collective; several devices can share one entry.
 - **Sensors**:
-  - Hydros inputs (temp, probe, triple-level, etc.) with units and transforms.
-  - Output measurements (power, voltage, current, frequency, reservoir where present).
+  - Inputs (temperature, probes, flow, triple-level float switches, etc.). Units are a best-effort guess from the input's name, since the API doesn't report them.
+  - Output measurements (power, voltage, current, frequency) and dosing pump reservoir levels.
   - Doser totals (**Dosed Today**) from the Hydros logs API.
-  - Collective health (MQTT online/offline) and current mode.
-  - Collective alerts summary sensor (aggregates per-sensor alerts).
-  - Debug sample sensor (stores latest S3 config + MQTT payload snapshot).
-- **Binary sensors**:
-  - Binary outputs (e.g., relays/outlets).
-  - Rope leak inputs as binary sensors.
-- **Periodic refresh**:
-  - Entity list refresh every 30 minutes to remove stale entities, while dosing log are pull every 5 minutes.
+  - Controller health per node (bus voltage/current, temperature, boot time, Wi-Fi/SD card status, self-tests).
+  - Alerts summary, firmware version, and collective status.
+- **Binary sensors**: on/off inputs (e.g. leak detectors) and a **Running** sensor per output.
+- **Controls** (need a read & write device key): output overrides (On/Off/Auto), variable output levels, operating mode, and output commands such as a doser's manual dose.
+- **Refresh**: device state every 7 seconds; dosing totals every 5 minutes.
 
 ## Notes
-- Credentials are stored in Home Assistant config entries.
-- Debug samples are stored in memory (not persisted). It may contain sensitive information: Anonymize / share only a subset of the information for troubleshooting purpose.
+- API keys are stored in Home Assistant's config entry storage (`.storage/core.config_entries`), unencrypted like every integration's credentials, so protect your Home Assistant backups. They aren't shown in the UI, logs, or entity attributes.
+- The state-polling session is cached in `.storage/hydros.session.<device id>` so restarts don't exhaust the API's limit of 5 new sessions per hour. It's deleted when you remove the integration.
 
 ## ⚠️ Safety Warning & Disclaimer 
 
