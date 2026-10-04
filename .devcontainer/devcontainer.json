@@ -1,0 +1,38 @@
+{
+  "name": "Home Assistant Hydros Dev",
+  "image": "ghcr.io/home-assistant/devcontainer:addons",
+  "remoteUser": "vscode",
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "forwardPorts": [8123],
+  "portsAttributes": {
+    "8123": {
+      "label": "Home Assistant",
+      "onAutoForward": "notify"
+    }
+  },
+  "runArgs": ["--init"],
+  "mounts": [
+    "type=volume,source=ha-hydros-config,target=/config",
+    "type=bind,source=${localWorkspaceFolder}/../pyhydros2,target=/workspaces/pyhydros2"
+  ],
+  "containerEnv": {
+    "WORKSPACE_DIR": "/workspaces/ha-hydros"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "hass.hass-vscode",
+        "github.vscode-pull-request-github"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/ha-hydros/.venv/bin/python",
+        "python.analysis.extraPaths": [
+          "/workspaces/ha-hydros/custom_components"
+        ]
+      }
+    }
+  }
+}
