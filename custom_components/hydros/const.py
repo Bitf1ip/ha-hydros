@@ -14,6 +14,7 @@ CONF_DEVICE_KEY = "device_key"
 CONF_DEVICE_ID = "device_id"
 CONF_NAME = "name"
 
+API_KEYS_HELP_URL = "https://github.com/Bitf1ip/ha-hydros#getting-your-api-keys"
 PLATFORMS: list[str] = ["sensor", "binary_sensor", "number", "select", "button"]
 
 STATE_UPDATE_INTERVAL_SECONDS = 7

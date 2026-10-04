@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Add a Hydros device",
-        "description": "Enter your CoralVue provider key and the device key generated for this device or collective in the HYDROS app. See [Getting your API keys](https://github.com/Bitf1ip/ha-hydros#getting-your-api-keys).",
+        "description": "Enter your CoralVue provider key and the device key generated for this device or collective in the HYDROS app. See [Getting your API keys]({keys_url}).",
         "data": {
           "provider_key": "Provider key",
           "device_key": "Device key",
@@ -28,7 +28,7 @@
       },
       "reauth_device": {
         "title": "Re-authenticate device",
-        "description": "The Hydros integration now uses API keys instead of your account login. Enter a provider/device key pair for the device previously known as \"{thing_id}\". See [Getting your API keys](https://github.com/Bitf1ip/ha-hydros#getting-your-api-keys).",
+        "description": "The Hydros integration now uses API keys instead of your account login. Enter a provider/device key pair for the device previously known as \"{thing_id}\". See [Getting your API keys]({keys_url}).",
         "data": {
           "provider_key": "Provider key",
           "device_key": "Device key",

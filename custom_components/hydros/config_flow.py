@@ -23,6 +23,7 @@ from pyhydros2 import (
 )
 
 from .const import (
+    API_KEYS_HELP_URL,
     CONF_COLLECTIVES,
     CONF_DEVICE_ID,
     CONF_DEVICE_KEY,
@@ -135,7 +136,10 @@ class HydrosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_add_another()
 
         return self.async_show_form(
-            step_id="user", data_schema=STEP_DEVICE_DATA_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=STEP_DEVICE_DATA_SCHEMA,
+            errors=errors,
+            description_placeholders={"keys_url": API_KEYS_HELP_URL},
         )
 
     async def async_step_add_another(
@@ -249,7 +253,7 @@ class HydrosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="reauth_device",
             data_schema=STEP_DEVICE_DATA_SCHEMA,
             errors=errors,
-            description_placeholders={"thing_id": thing_id},
+            description_placeholders={"thing_id": thing_id, "keys_url": API_KEYS_HELP_URL},
         )
 
     async def _async_finish_legacy_reauth(self) -> FlowResult:
