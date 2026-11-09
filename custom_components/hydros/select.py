@@ -93,6 +93,23 @@ class HydrosOverrideSelect(HydrosEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         state: DeviceState = self.coordinator.data
+        override_state = state.get("_hydros_override_state")
+        if isinstance(override_state, dict):
+            if self._override_key not in override_state:
+                # No active entry in the API override document means the
+                # output is following its Hydros schedule/automatic logic.
+                return "Auto"
+            value = override_state[self._override_key]
+            if isinstance(value, dict):
+                desired = value.get("desired")
+                if desired is None:
+                    return "Auto"
+                reported = value.get("reported")
+                current = reported if reported is not None else desired
+                if self._flag:
+                    return "Off" if bool(current) else "Auto"
+                return "On" if bool(current) else "Off"
+
         overridden = state.output_overridden(self._output_name)
         if overridden is None:
             return None

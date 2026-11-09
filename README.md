@@ -16,15 +16,16 @@ Treat both keys like passwords: don't share them or post them in issues or logs.
 **Upgrading from a version that used your Hydros username and password?** Home Assistant asks you to re-authenticate. Enter a provider/device key pair for each collective you had configured. Existing entities, and their history, are moved over wherever a matching entity exists in the new API.
 
 ## Summary
+
 Custom Home Assistant integration for Hydros controllers. It connects to the Hydros cloud API to expose inputs, outputs, dosing history, and device health in Home Assistant.
 
 ![Example](dashboard.png)
 
 ⚠️ DO NOT rely on this integration's automations for life-critical functions (e.g temperature control, pumps) or when equipment/property damage can occur (e.g flood).
 
-⚠️ This integration require internet to function and integrate with Hydros' cloud. Network issues will cause sensors to become unavailable (and automation to fail).
+⚠️ This integration requires internet to function and integrate with Hydros' cloud. Network issues will cause sensors to become unavailable (and automation to fail).
 
-🛡️Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
+🛡️ Leverage Hydros' own controller features for such functions as they have built-in resiliency for network & power outages and built-in safeguards.
 
 Example of good usage for this integration includes: long term metrics, triggering alerts, automation to non life supporting 3rd party devices (e.g light, smart switch).
 
@@ -38,22 +39,24 @@ Example of good usage for this integration includes: long term metrics, triggeri
   - Controller health per node (bus voltage/current, temperature, boot time, Wi-Fi/SD card status, self-tests).
   - Alerts summary, firmware version, and collective status.
 - **Binary sensors**: on/off inputs (e.g. leak detectors) and a **Running** sensor per output.
+- **Events**: an **AWC Activity** event entity reports ATO, Drain, and Fill start/stop transitions from the Hydros output logs. Fill and Drain stop events include the matching start time and runtime when both log records are available. Events are discovered during the next log poll (every 60 seconds); older history is seeded on startup without replaying historical transitions.
 - **Controls** (need a read & write device key): output overrides (On/Off/Auto), variable output levels, operating mode, and output commands such as a doser's manual dose.
-- **Refresh**: device state every 7 seconds; dosing totals every 5 minutes.
+- **Refresh**: device state every 7 seconds; dosing totals every 5 minutes; AWC events every 60 seconds.
 
 ## Notes
+
 - API keys are stored in Home Assistant's config entry storage (`.storage/core.config_entries`), unencrypted like every integration's credentials, so protect your Home Assistant backups. They aren't shown in the UI, logs, or entity attributes.
 - The state-polling session is cached in `.storage/hydros.session.<device id>` so restarts don't exhaust the API's limit of 5 new sessions per hour. It's deleted when you remove the integration.
 
-## ⚠️ Safety Warning & Disclaimer 
+## ⚠️ Safety Warning & Disclaimer
 
 HA-Hydros is provided “as is” and “with all faults”, without warranty of any kind, express or implied. The author makes no representations or guarantees regarding safety, suitability, accuracy, reliability, availability, or fitness for any particular purpose.
 
-This software is not designed, tested, or intended for safety-critical, life-supporting, or fail-safe control systems. Do not rely on this integration for life-critical functions (e.g. temperature control, circulation, oxygenation) or for scenarios where equipment failure could result in property damage (e.g. floods, electrical hazards, or fire).
+This software is not designed, tested, or intended for safety-critical, life-supporting, or fail-safe control systems. Do not rely on it for life-critical functions (e.g. temperature control, circulation, oxygenation) or for scenarios where equipment failure could result in property damage (e.g. floods, electrical hazards, or fire).
 
 Use of this software is entirely at your own risk. Improper configuration, software defects, network outages, cloud service changes, or unexpected behavior may result in equipment malfunction, property damage, or loss of aquatic life.
 
-Always validate behavior in a controlled or non-critical environment before enabling automations. For critical functions, use Hydros’ native controller features, which are specifically designed with local control, redundancy, and safety safeguards.
+Always validate behavior in a controlled or non-critical environment before enabling automations. For critical functions, use Hydros' native controller features, which are specifically designed with local control, redundancy, and safety safeguards.
 
 In no event shall the author be liable for any direct, indirect, incidental, special, exemplary, or consequential damages arising from the use of, or inability to use, this software.
 

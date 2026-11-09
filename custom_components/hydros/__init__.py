@@ -27,7 +27,12 @@ from .const import (
     DOMAIN,
     PLATFORMS,
 )
-from .coordinator import HydrosDevice, HydrosDosingCoordinator, HydrosStateCoordinator
+from .coordinator import (
+    HydrosAWCEventCoordinator,
+    HydrosDevice,
+    HydrosDosingCoordinator,
+    HydrosStateCoordinator,
+)
 
 
 def _session_store(hass: HomeAssistant, device_id: str) -> Store[dict[str, Any]]:
@@ -97,13 +102,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             raise ConfigEntryNotReady(f"Hydros setup failed for {name}: {err}") from err
 
         poller = await _async_build_poller(hass, client, device_id)
-        state_coordinator = HydrosStateCoordinator(hass, poller, name)
+        state_coordinator = HydrosStateCoordinator(hass, poller, client, name)
         await state_coordinator.async_config_entry_first_refresh()
 
         doser_names = [item.name for item in override_metadata if "dose" in item.commands]
         dosing_coordinator = HydrosDosingCoordinator(hass, client, doser_names, name)
         # Dosing totals are non-essential; a logs outage shouldn't block the device's controls.
         await dosing_coordinator.async_refresh()
+
+        awc_event_coordinator = HydrosAWCEventCoordinator(hass, client, name)
+        # AWC history is supplemental; log failures must not block controls.
+        await awc_event_coordinator.async_refresh()
 
         devices[device_id] = HydrosDevice(
             device_id=device_id,
@@ -112,6 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             client=client,
             state_coordinator=state_coordinator,
             dosing_coordinator=dosing_coordinator,
+            awc_event_coordinator=awc_event_coordinator,
             override_metadata=override_metadata,
             log_series=log_series_discovery.series,
         )

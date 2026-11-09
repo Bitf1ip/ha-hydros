@@ -15,10 +15,11 @@ CONF_DEVICE_ID = "device_id"
 CONF_NAME = "name"
 
 API_KEYS_HELP_URL = "https://github.com/Bitf1ip/ha-hydros#getting-your-api-keys"
-PLATFORMS: list[str] = ["sensor", "binary_sensor", "number", "select", "button"]
+PLATFORMS: list[str] = ["sensor", "binary_sensor", "number", "select", "button", "event"]
 
 STATE_UPDATE_INTERVAL_SECONDS = 7
 DOSING_UPDATE_INTERVAL_SECONDS = 300
+AWC_EVENT_UPDATE_INTERVAL_SECONDS = 60
 
 # -- Legacy (pre-2.0, pyhydros/MQTT) config schema ---------------------------
 # Kept only so __init__.py can recognize an old-style config entry and
