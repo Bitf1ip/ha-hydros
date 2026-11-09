@@ -30,4 +30,3 @@ CONF_REGION = "region"
 CONF_COLLECTIVES = "collectives"
 CONF_ENABLE_REMOTE_CONTROL = "enable_remote_control"
 CONF_ACCEPT_REMOTE_CONTROL_DISCLAIMER = "accept_remote_control_disclaimer"
-

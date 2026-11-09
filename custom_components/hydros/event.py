@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import HydrosAWCEventCoordinator, HydrosDevice
+from .coordinator import HydrosAWCEvent, HydrosAWCEventCoordinator, HydrosDevice
 
 
 async def async_setup_entry(
@@ -40,10 +40,18 @@ class HydrosAWCActivityEvent(CoordinatorEntity[HydrosAWCEventCoordinator], Event
         self._attr_unique_id = f"{device.device_id}-awc-activity"
         self._attr_name = "AWC Activity"
         self._attr_device_info = device.device_info
+        self._delivered: list[HydrosAWCEvent] | None = None
 
     def _handle_coordinator_update(self) -> None:
         """Emit every new log point, including multiple events from one poll."""
-        for event in self.coordinator.data or []:
+        data = self.coordinator.data
+        # A failed poll keeps the previous data and still notifies listeners;
+        # deliver each successful poll's events only once.
+        if not self.coordinator.last_update_success or data is self._delivered:
+            super()._handle_coordinator_update()
+            return
+        self._delivered = data
+        for event in data or []:
             self._trigger_event(
                 event.event_type,
                 {

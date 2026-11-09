@@ -147,5 +147,3 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Delete the stored polling sessions, which hold a bearer poll token."""
     for device_data in entry.data.get(CONF_DEVICES, []):
         await _session_store(hass, device_data[CONF_DEVICE_ID]).async_remove()
-
-

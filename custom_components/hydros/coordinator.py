@@ -78,7 +78,7 @@ class HydrosStateCoordinator(DataUpdateCoordinator[DeviceState]):
         )
         self._poller = poller
         self._client = client
-        self._override_snapshot: dict[str, Any] | None = None
+        self._override_snapshot: dict[str, dict[str, Any]] | None = None
         # Keyed by output name, or None for top-level fields such as ``mode``.
         self._pending: dict[str | None, _Pending] = {}
         self._last_success = 0.0
@@ -111,7 +111,10 @@ class HydrosStateCoordinator(DataUpdateCoordinator[DeviceState]):
             # snapshot and keep ordinary state sensors available on failure.
             _LOGGER.debug("Could not refresh Hydros override state: %s", err)
         else:
-            self._override_snapshot = override_state.overrides
+            self._override_snapshot = {
+                key: {"desired": item.desired, "reported": item.reported}
+                for key, item in override_state.overrides.items()
+            }
 
         state = self._apply_pending(state)
         return self._apply_override_snapshot(state)
@@ -122,10 +125,7 @@ class HydrosStateCoordinator(DataUpdateCoordinator[DeviceState]):
             return state
 
         raw = dict(state.raw)
-        raw["_hydros_override_state"] = {
-            key: {"desired": item.desired, "reported": item.reported}
-            for key, item in self._override_snapshot.items()
-        }
+        raw["_hydros_override_state"] = dict(self._override_snapshot)
         return DeviceState(raw)
 
     def _apply_pending(self, state: DeviceState) -> DeviceState:
@@ -161,7 +161,22 @@ class HydrosStateCoordinator(DataUpdateCoordinator[DeviceState]):
             patch, reflected, time.monotonic() + _OPTIMISTIC_HOLD_SECONDS
         )
         if self.data is not None:
-            self.async_set_updated_data(self._apply_pending(self.data))
+            state = self._apply_pending(self.data)
+            self.async_set_updated_data(self._apply_override_snapshot(state))
+
+    def apply_optimistic_override(self, key: str, value: Any) -> None:
+        """Reflect a device-confirmed override in the override snapshot now.
+
+        The next poll replaces the snapshot with the API's document.
+        """
+        if self._override_snapshot is None:
+            return
+        snapshot = dict(self._override_snapshot)
+        if value is None:
+            snapshot.pop(key, None)
+        else:
+            snapshot[key] = {"desired": value, "reported": value}
+        self._override_snapshot = snapshot
 
 
 class HydrosDosingCoordinator(DataUpdateCoordinator[dict[str, float]]):
@@ -438,6 +453,7 @@ class HydrosDevice:
         except HydrosAPIError as err:
             raise HomeAssistantError(str(err)) from err
         _raise_if_not_applied(result.receipt, command=False)
+        self.state_coordinator.apply_optimistic_override(key, value)
         self._apply_optimistic_override(name, value)
 
     def _apply_optimistic_override(self, name: str, value: Any) -> None:
@@ -471,4 +487,3 @@ class HydrosDevice:
             self.state_coordinator.apply_optimistic(
                 None, {"mode": command}, lambda raw: raw.get("mode") == command
             )
-

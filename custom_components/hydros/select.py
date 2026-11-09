@@ -125,4 +125,3 @@ class HydrosOverrideSelect(HydrosEntity, SelectEntity):
         else:
             value = {"On": True, "Off": False, "Auto": None}[option]
         await self._device.async_put_override(self._override_key, value, self._output_name)
-
